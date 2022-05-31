@@ -26,11 +26,13 @@ func benchmarkPreparePublicKeys(nPubKeys int, b *testing.B) {
 	hasher, err := blake2b.NewBlake2bWithSize(blsHashSize)
 	require.Nil(b, err)
 
+	llSig := &multisig.BlsMultiSigner{Hasher: hasher}
+
 	pubKeys := createBLSPubKeys(nPubKeys)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		prepPubKeys, err := multisig.PreparePublicKeys(pubKeys, hasher, pubKeys[0].Suite())
+		prepPubKeys, err := llSig.PreparePublicKeys(pubKeys, pubKeys[0].Suite())
 		require.Nil(b, err)
 		require.NotNil(b, prepPubKeys)
 	}
@@ -96,9 +98,12 @@ func benchmarkVerifyAggregatedSig(nPubKeys uint16, b *testing.B) {
 	aggSigBytes, err := llSig.AggregateSignatures(pubKeys[0].Suite(), sigShares, pubKeys)
 	require.Nil(b, err)
 
+	prepPubKeys, err := llSig.PreparePublicKeys(pubKeys, pubKeys[0].Suite())
+	require.Nil(b, err)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = llSig.VerifyAggregatedSig(pubKeys[0].Suite(), pubKeys, aggSigBytes, msg)
+		err = llSig.VerifyAggregatedSig(prepPubKeys, aggSigBytes, msg)
 		require.Nil(b, err)
 	}
 }
@@ -121,7 +126,7 @@ func benchmarkVerifyAggregatedSigWithoutPrepare(nPubKeys uint16, b *testing.B) {
 	aggSigBytes, err := llSig.AggregateSignatures(pubKeys[0].Suite(), sigShares, pubKeys)
 	require.Nil(b, err)
 
-	prepPubKeys, err := multisig.PreparePublicKeys(pubKeys, hasher, pubKeys[0].Suite())
+	prepPubKeys, err := llSig.PreparePublicKeys(pubKeys, pubKeys[0].Suite())
 	require.Nil(b, err)
 
 	b.ResetTimer()

@@ -5,7 +5,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/hashing"
-	"github.com/ElrondNetwork/elrond-go-crypto"
+	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/mcl"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/mcl/singlesig"
 	"github.com/herumi/bls-go-binary/bls"
@@ -77,17 +77,10 @@ func (bms *BlsMultiSigner) AggregateSignatures(
 
 // VerifyAggregatedSig verifies if a BLS aggregated signature is valid over a given message
 func (bms *BlsMultiSigner) VerifyAggregatedSig(
-	suite crypto.Suite,
-	pubKeys []crypto.PublicKey,
+	preparedPubKeys []bls.PublicKey,
 	aggSigBytes []byte,
 	msg []byte,
 ) error {
-	if check.IfNil(suite) {
-		return crypto.ErrNilSuite
-	}
-	if len(pubKeys) == 0 {
-		return crypto.ErrNilPublicKeys
-	}
 	if len(aggSigBytes) == 0 {
 		return crypto.ErrNilSignature
 	}
@@ -95,18 +88,8 @@ func (bms *BlsMultiSigner) VerifyAggregatedSig(
 		return crypto.ErrNilMessage
 	}
 
-	_, ok := suite.GetUnderlyingSuite().(*mcl.SuiteBLS12)
-	if !ok {
-		return crypto.ErrInvalidSuite
-	}
-
-	preparedPubKeys, err := preparePublicKeys(pubKeys, bms.Hasher, suite)
-	if err != nil {
-		return err
-	}
-
 	aggSig := &bls.Sign{}
-	err = aggSig.Deserialize(aggSigBytes)
+	err := aggSig.Deserialize(aggSigBytes)
 	if err != nil {
 		return err
 	}
@@ -119,11 +102,23 @@ func (bms *BlsMultiSigner) VerifyAggregatedSig(
 	return nil
 }
 
-func preparePublicKeys(
+// PreparePublicKeys will prepare public keys for aggregate verification
+func (bms *BlsMultiSigner) PreparePublicKeys(
 	pubKeys []crypto.PublicKey,
-	hasher hashing.Hasher,
 	suite crypto.Suite,
 ) ([]bls.PublicKey, error) {
+	if check.IfNil(suite) {
+		return nil, crypto.ErrNilSuite
+	}
+	if len(pubKeys) == 0 {
+		return nil, crypto.ErrNilPublicKeys
+	}
+
+	_, ok := suite.GetUnderlyingSuite().(*mcl.SuiteBLS12)
+	if !ok {
+		return nil, crypto.ErrInvalidSuite
+	}
+
 	var hPk []byte
 	var prepPublicKeyPoint crypto.Point
 	var pubKeyPoint crypto.Point
@@ -142,7 +137,7 @@ func preparePublicKeys(
 		pubKeyPoint = pubKey.Point()
 
 		// t_i = H(pk_i, {pk_1, ..., pk_n})
-		hPk, err = hashPublicKeyPoints(hasher, pubKeyPoint, concatPKs)
+		hPk, err = hashPublicKeyPoints(bms.Hasher, pubKeyPoint, concatPKs)
 		if err != nil {
 			return nil, err
 		}

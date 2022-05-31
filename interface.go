@@ -4,6 +4,7 @@ import (
 	"crypto/cipher"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/herumi/bls-go-binary/bls"
 )
 
 // A Scalar represents a scalar value by which
@@ -217,7 +218,10 @@ type LowLevelSignerBLS interface {
 	// AggregateSignatures aggregates BLS single signatures given as byte arrays
 	AggregateSignatures(suite Suite, signatures [][]byte, pubKeysSigners []PublicKey) ([]byte, error)
 	// VerifyAggregatedSig verifies the validity of an aggregated signature over a given message
-	VerifyAggregatedSig(suite Suite, pubKeys []PublicKey, aggSigBytes []byte, msg []byte) error
+	VerifyAggregatedSig(pubKeys []bls.PublicKey, aggSigBytes []byte, msg []byte) error
+
+	// PreparePublicKeys will prepare public keys for aggregate verification
+	PreparePublicKeys(pubKeys []PublicKey, suite Suite) ([]bls.PublicKey, error)
 }
 
 // PeerSignatureHandler is a wrapper over SingleSigner that buffers the peer signatures.

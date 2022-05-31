@@ -5,7 +5,8 @@ import (
 	"sync"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-crypto"
+	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	"github.com/herumi/bls-go-binary/bls"
 )
 
 // BlsHashSize specifies the hash size for using bls scheme
@@ -32,9 +33,10 @@ type blsMultiSigData struct {
 	pubKeys []crypto.PublicKey
 	privKey crypto.PrivateKey
 	// signatures in BLS are points on curve G1
-	sigShares [][]byte
-	aggSig    []byte
-	ownIndex  uint16
+	sigShares   [][]byte
+	aggSig      []byte
+	ownIndex    uint16
+	prepPubKeys []bls.PublicKey
 }
 
 type blsMultiSigner struct {
@@ -68,16 +70,17 @@ func NewBLSMultisig(
 	sizeConsensus := uint16(len(pubKeys))
 	sigShares := make([][]byte, sizeConsensus)
 	pk, err := convertStringsToPubKeys(pubKeys, keyGen)
-
 	if err != nil {
 		return nil, err
 	}
+	prepPubKeys := make([]bls.PublicKey, 0)
 
 	data := &blsMultiSigData{
-		pubKeys:   pk,
-		privKey:   privKey,
-		ownIndex:  ownIndex,
-		sigShares: sigShares,
+		pubKeys:     pk,
+		privKey:     privKey,
+		ownIndex:    ownIndex,
+		sigShares:   sigShares,
+		prepPubKeys: prepPubKeys,
 	}
 
 	// own index is used only for signing
@@ -102,10 +105,10 @@ func (bms *blsMultiSigner) Reset(pubKeys []string, index uint16) error {
 	sizeConsensus := uint16(len(pubKeys))
 	sigShares := make([][]byte, sizeConsensus)
 	pk, err := convertStringsToPubKeys(pubKeys, bms.keyGen)
-
 	if err != nil {
 		return err
 	}
+	prepPubKeys := make([]bls.PublicKey, 0)
 
 	bms.mutSigData.Lock()
 	defer bms.mutSigData.Unlock()
@@ -113,10 +116,11 @@ func (bms *blsMultiSigner) Reset(pubKeys []string, index uint16) error {
 	privKey := bms.data.privKey
 
 	data := &blsMultiSigData{
-		pubKeys:   pk,
-		privKey:   privKey,
-		ownIndex:  index,
-		sigShares: sigShares,
+		pubKeys:     pk,
+		privKey:     privKey,
+		ownIndex:    index,
+		sigShares:   sigShares,
+		prepPubKeys: prepPubKeys,
 	}
 
 	bms.data = data
@@ -292,7 +296,15 @@ func (bms *blsMultiSigner) Verify(message []byte, bitmap []byte) error {
 		pubKeys = append(pubKeys, bms.data.pubKeys[i])
 	}
 
-	return bms.llSigner.VerifyAggregatedSig(bms.keyGen.Suite(), pubKeys, bms.data.aggSig, message)
+	if len(bms.data.prepPubKeys) == 0 {
+		preparedPubKeys, err := bms.llSigner.PreparePublicKeys(pubKeys, bms.keyGen.Suite())
+		if err != nil {
+			return err
+		}
+		bms.data.prepPubKeys = preparedPubKeys
+	}
+
+	return bms.llSigner.VerifyAggregatedSig(bms.data.prepPubKeys, bms.data.aggSig, message)
 }
 
 // CreateAndAddSignatureShareForKey will manually create and add the signature share for the provided key
