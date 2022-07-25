@@ -17,26 +17,15 @@ func TestDisabledMultiSig_MethodsShouldNotPanic(t *testing.T) {
 	}()
 
 	dms := &DisabledMultiSig{}
-	recoveredInstance, err := dms.Create(nil, 0)
-	assert.NotNil(t, recoveredInstance)
-	assert.Nil(t, err)
-
 	recoveredBytes, err := dms.CreateSignatureShare(nil, nil)
 	assert.Equal(t, []byte(signature), recoveredBytes)
 	assert.Nil(t, err)
 
-	recoveredBytes, err = dms.SignatureShare(0)
+	recoveredBytes, err = dms.AggregateSigs(nil, nil)
 	assert.Equal(t, []byte(signature), recoveredBytes)
 	assert.Nil(t, err)
 
-	recoveredBytes, err = dms.AggregateSigs(nil)
-	assert.Equal(t, []byte(signature), recoveredBytes)
-	assert.Nil(t, err)
-
-	assert.Nil(t, dms.SetAggregatedSig(nil))
-	assert.Nil(t, dms.Verify(nil, nil))
+	assert.Nil(t, dms.VerifySignatureShare(nil, nil, nil))
 	assert.False(t, check.IfNil(dms))
-	assert.Nil(t, dms.Reset(nil, 0))
-	assert.Nil(t, dms.StoreSignatureShare(0, nil))
-	assert.Nil(t, dms.VerifySignatureShare(0, nil, nil, nil))
+	assert.Nil(t, dms.VerifyAggregatedSig(nil, nil, nil))
 }

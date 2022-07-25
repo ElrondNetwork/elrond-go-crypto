@@ -176,30 +176,18 @@ type SingleSigner interface {
 type MultiSigner interface {
 	// MultiSigVerifier Provides functionality for verifying a multi-signature
 	MultiSigVerifier
-	// Reset resets the data holder inside the multiSigner
-	Reset(pubKeys []string, index uint16) error
 	// CreateSignatureShare creates a partial signature
-	CreateSignatureShare(msg []byte, bitmap []byte) ([]byte, error)
-	// StoreSignatureShare adds the partial signature of the signer with specified position
-	StoreSignatureShare(index uint16, sig []byte) error
-	// SignatureShare returns the partial signature set for given index
-	SignatureShare(index uint16) ([]byte, error)
+	CreateSignatureShare(privateKeyBytes []byte, message []byte) ([]byte, error)
 	// VerifySignatureShare verifies the partial signature of the signer with specified position
-	VerifySignatureShare(index uint16, sig []byte, msg []byte, bitmap []byte) error
+	VerifySignatureShare(publicKey []byte, message []byte, sig []byte) error
 	// AggregateSigs aggregates all collected partial signatures
-	AggregateSigs(bitmap []byte) ([]byte, error)
-	// CreateAndAddSignatureShareForKey will manually create and add the signature share for the provided key
-	CreateAndAddSignatureShareForKey(message []byte, privateKey PrivateKey, pubKeyBytes []byte) ([]byte, error)
+	AggregateSigs(pubKeysSigners [][]byte, signatures [][]byte) ([]byte, error)
 }
 
 // MultiSigVerifier provides functionality for verifying a multi-signature
 type MultiSigVerifier interface {
-	// Create resets the multisigner and initializes to the new params
-	Create(pubKeys []string, index uint16) (MultiSigner, error)
-	// SetAggregatedSig sets the aggregated signature
-	SetAggregatedSig([]byte) error
-	// Verify verifies the aggregated signature
-	Verify(msg []byte, bitmap []byte) error
+	// VerifyAggregatedSig verifies the aggregated signature
+	VerifyAggregatedSig(pubKeysSigners [][]byte, message []byte, aggSig []byte) error
 	// IsInterfaceNil returns true if there is no value under the interface
 	IsInterfaceNil() bool
 }
